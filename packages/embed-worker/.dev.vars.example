@@ -1,0 +1,8 @@
+# Embed Worker Environment Variables
+# Copy this file to .dev.vars and fill in your values
+
+# No secrets required for the embed worker in local development
+# All configuration is done via wrangler.jsonc
+
+# If you need to test with specific settings, add them here:
+# EXAMPLE_VAR=your-value-here

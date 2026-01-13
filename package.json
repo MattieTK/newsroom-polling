@@ -1,0 +1,29 @@
+{
+  "name": "newsroom-polling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A real-time polling system for news publishers built on Cloudflare Workers",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:embed\" \"npm:dev:cms\" \"npm:dev:cms-ui\"",
+    "dev:embed": "npm run dev -w packages/embed-worker",
+    "dev:cms": "npm run dev -w packages/cms-worker",
+    "dev:cms-ui": "npm run dev -w packages/cms-ui",
+    "build": "npm run build --workspaces --if-present",
+    "deploy": "npm run deploy:embed && npm run deploy:cms",
+    "deploy:embed": "npm run deploy -w packages/embed-worker",
+    "deploy:cms": "npm run deploy -w packages/cms-worker",
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "tsc --noEmit && npm run typecheck -w packages/cms-ui"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

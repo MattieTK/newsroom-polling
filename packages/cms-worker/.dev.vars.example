@@ -1,0 +1,14 @@
+# CMS Worker Environment Variables
+# Copy this file to .dev.vars and fill in your values
+
+# Cloudflare Access Authentication (Optional)
+# Leave these empty for local development without authentication
+# For production, set these in the Cloudflare dashboard or via wrangler secret
+
+# Your Cloudflare Access Application Audience (AUD) tag
+# Find this in Cloudflare Zero Trust > Access > Applications > Your App > Overview
+# CF_ACCESS_AUD=your-application-audience-tag-here
+
+# Your Cloudflare Access team domain (the subdomain of cloudflareaccess.com)
+# Example: if your team URL is "mycompany.cloudflareaccess.com", use "mycompany"
+# CF_ACCESS_TEAM=your-team-domain

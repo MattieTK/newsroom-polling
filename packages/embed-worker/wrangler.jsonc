@@ -1,0 +1,24 @@
+{
+  "name": "newsroom-polls-embed",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-01-01",
+
+  // Durable Objects with SQLite storage for all poll data
+  // No D1 database needed - each poll stores its own data
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "POLL_COUNTER",
+        "class_name": "PollVoteCounter"
+      }
+    ]
+  },
+
+  // Durable Object migrations - using new_sqlite_classes for SQLite storage
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PollVoteCounter"]
+    }
+  ]
+}
