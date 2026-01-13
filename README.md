@@ -243,7 +243,6 @@ Once a poll is published, embed it using the iframe code from the CMS:
 
 ## Documentation
 
-- [PLAN.md](./PLAN.md) - Implementation roadmap and status
 - [AGENTS.md](./AGENTS.md) - Guidelines for AI coding assistants
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - System architecture details
 - [docs/API.md](./docs/API.md) - API endpoint specifications
@@ -253,4 +252,4 @@ Once a poll is published, embed it using the iframe code from the CMS:
 
 ## License
 
-[Your License Here]
+MIT License - see [LICENSE](./LICENSE) for details.
