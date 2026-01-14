@@ -15,7 +15,7 @@ export async function handleEmbed(c: Context): Promise<Response> {
 
   // Check if poll exists and is published
   const checkResponse = await stub.fetch(new Request('http://internal/get'));
-  
+
   if (!checkResponse.ok) {
     if (checkResponse.status === 404) {
       return errorResponse('Poll not found', 404, ERROR_CODES.POLL_NOT_FOUND);
@@ -46,252 +46,327 @@ function generateEmbedHTML(pollId: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Poll</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f4f4f5;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #a1a1aa;
+      --accent: #818cf8;
+      --accent-hover: #6366f1;
+      --accent-subtle: rgba(129, 140, 248, 0.12);
+      --success: #34d399;
+      --font: 'Inter', -apple-system, sans-serif;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-    
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      font-size: 16px;
+      font-family: var(--font);
+      font-size: 15px;
       line-height: 1.5;
-      color: #1a1a1a;
-      background: #fff;
+      color: var(--text);
+      background: transparent;
       padding: 16px;
+      -webkit-font-smoothing: antialiased;
     }
-    
+
     .poll-container {
-      max-width: 600px;
+      max-width: 520px;
       margin: 0 auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
     }
-    
+
+    .poll-content {
+      padding: 24px;
+    }
+
     .poll-question {
-      font-size: 1.25rem;
+      font-size: 1.125rem;
       font-weight: 600;
-      margin-bottom: 16px;
-      color: #1a1a1a;
+      line-height: 1.4;
+      color: var(--text);
+      margin-bottom: 20px;
     }
-    
+
     .poll-answers {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
-    
+
     .answer-btn {
       display: block;
       width: 100%;
-      padding: 12px 16px;
-      font-size: 1rem;
-      font-family: inherit;
+      padding: 14px 18px;
+      font-family: var(--font);
+      font-size: 0.9375rem;
+      font-weight: 500;
       text-align: left;
-      background: #f5f5f5;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
-    
+
     .answer-btn:hover:not(:disabled) {
-      background: #e8e8e8;
-      border-color: #ccc;
+      border-color: var(--accent);
+      background: var(--accent-subtle);
     }
-    
+
     .answer-btn:focus {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-subtle);
     }
-    
+
     .answer-btn:disabled {
       cursor: not-allowed;
-      opacity: 0.7;
+      opacity: 0.6;
     }
-    
+
     .answer-btn.submitting {
-      background: #e0e0e0;
+      background: var(--accent-subtle);
+      border-color: var(--accent);
     }
-    
-    /* Results view */
+
+    .poll-results {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .result-item {
-      margin-bottom: 12px;
+      /* No animation */
     }
-    
+
     .result-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
     }
-    
+
     .result-text {
-      font-size: 0.95rem;
-      color: #333;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--text);
+      flex: 1;
     }
-    
+
     .result-text.user-vote {
-      font-weight: 600;
+      color: var(--accent-hover);
     }
-    
+
+    .result-text.user-vote::after {
+      content: ' ✓';
+      font-size: 0.85em;
+    }
+
     .result-percentage {
-      font-size: 0.9rem;
+      font-size: 0.9375rem;
       font-weight: 600;
-      color: #666;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
     }
-    
+
     .result-bar-container {
-      height: 8px;
-      background: #e0e0e0;
-      border-radius: 4px;
+      height: 10px;
+      background: var(--bg-secondary);
+      border-radius: 100px;
       overflow: hidden;
     }
-    
+
     .result-bar {
       height: 100%;
-      background: #0066cc;
-      border-radius: 4px;
-      transition: width 0.3s ease;
+      background: var(--accent);
+      border-radius: 100px;
+      transition: width 0.4s ease-out;
     }
-    
+
     .result-bar.user-vote {
-      background: #004499;
+      background: var(--accent-hover);
     }
-    
+
     .poll-footer {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.85rem;
-      color: #666;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
     }
-    
+
     .total-votes {
       font-weight: 500;
+      color: var(--text-secondary);
     }
-    
+
     .live-indicator {
       display: flex;
       align-items: center;
       gap: 6px;
+      font-weight: 500;
+      color: var(--success);
     }
-    
+
     .live-dot {
-      width: 8px;
-      height: 8px;
-      background: #22c55e;
+      width: 6px;
+      height: 6px;
+      background: var(--success);
       border-radius: 50%;
-      animation: pulse 2s infinite;
+      animation: pulse 2s ease-in-out infinite;
     }
-    
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.4; }
     }
-    
-    /* States */
+
     .loading {
-      text-align: center;
-      padding: 32px;
-      color: #666;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      gap: 12px;
+      color: var(--text-secondary);
     }
-    
+
     .loading-spinner {
       width: 24px;
       height: 24px;
-      border: 3px solid #e0e0e0;
-      border-top-color: #0066cc;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 12px;
+      animation: spin 0.7s linear infinite;
     }
-    
+
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-    
+
     .error {
       text-align: center;
-      padding: 32px;
-      color: #dc2626;
+      padding: 40px;
+      color: var(--text-secondary);
     }
-    
+
     .error-icon {
-      font-size: 2rem;
-      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 12px;
+      background: #fee2e2;
+      border-radius: 50%;
+      color: #ef4444;
+      font-size: 1.25rem;
+      font-weight: 700;
     }
-    
-    .closed-badge {
-      display: inline-block;
-      padding: 2px 8px;
+
+    .closed-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
       background: #f3f4f6;
-      color: #6b7280;
-      font-size: 0.75rem;
-      font-weight: 500;
-      border-radius: 4px;
-      text-transform: uppercase;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
-    
+
+    .closed-badge {
+      padding: 3px 8px;
+      background: #9ca3af;
+      color: white;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-radius: 4px;
+    }
+
+    .closed-text {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
     .message {
-      padding: 12px;
+      padding: 10px 14px;
       border-radius: 8px;
       margin-bottom: 16px;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
     }
-    
-    .message.info {
-      background: #eff6ff;
-      color: #1e40af;
-    }
-    
+
     .message.error {
-      background: #fef2f2;
-      color: #dc2626;
-      padding: 12px;
-      text-align: left;
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    .answer-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
   </style>
 </head>
 <body>
   <div id="poll-root" class="poll-container">
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      <div>Loading poll...</div>
+    <div class="poll-content">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <div>Loading poll...</div>
+      </div>
     </div>
   </div>
 
   <script>
     (function() {
       'use strict';
-      
+
       const POLL_ID = '${pollId}';
       const API_BASE = '';
-      
-      // State
+
       let state = {
-        status: 'loading', // loading, ready, submitting, voted, closed, error
+        status: 'loading',
         poll: null,
-        userVote: null, // answerId the user voted for
+        userVote: null,
         error: null,
         sseConnected: false
       };
-      
+
       let eventSource = null;
-      
-      // DOM
       const root = document.getElementById('poll-root');
-      
-      // Storage key includes reset_count so votes are cleared when poll is reset
+
       function getStorageKey() {
         const resetCount = state.poll ? (state.poll.reset_count || 0) : 0;
         return 'poll-voted-' + POLL_ID + '-v' + resetCount;
       }
-      
-      // Storage helpers
+
       function getStoredVote() {
         try {
           return localStorage.getItem(getStorageKey());
@@ -299,16 +374,13 @@ function generateEmbedHTML(pollId: string): string {
           return null;
         }
       }
-      
+
       function setStoredVote(answerId) {
         try {
           localStorage.setItem(getStorageKey(), answerId);
-        } catch (e) {
-          // localStorage unavailable
-        }
+        } catch (e) {}
       }
 
-      // Client ID for fingerprinting - persists across sessions in the same browser
       function getClientId() {
         const storageKey = 'poll-client-id';
         try {
@@ -319,12 +391,10 @@ function generateEmbedHTML(pollId: string): string {
           }
           return clientId;
         } catch (e) {
-          // localStorage unavailable, generate ephemeral ID
           return crypto.randomUUID();
         }
       }
-      
-      // API
+
       async function fetchPoll() {
         const res = await fetch(API_BASE + '/api/poll/' + POLL_ID);
         if (!res.ok) {
@@ -333,28 +403,26 @@ function generateEmbedHTML(pollId: string): string {
         }
         return res.json();
       }
-      
+
       async function submitVote(answerId) {
         const res = await fetch(API_BASE + '/api/poll/' + POLL_ID + '/vote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answerId, clientId: getClientId() })
         });
-        
+
         const data = await res.json();
-        
+
         if (!res.ok) {
           if (res.status === 409) {
-            // Already voted - treat as success
             return { alreadyVoted: true };
           }
           throw new Error(data.error || 'Failed to submit vote');
         }
-        
+
         return data;
       }
-      
-      // SSE for real-time vote updates
+
       function connectSSE() {
         if (eventSource) {
           eventSource.close();
@@ -371,9 +439,7 @@ function generateEmbedHTML(pollId: string): string {
           try {
             var data = JSON.parse(e.data);
             updateVoteCounts(data);
-          } catch (err) {
-            // Ignore parse errors
-          }
+          } catch (err) {}
         });
 
         eventSource.onerror = function() {
@@ -382,13 +448,12 @@ function generateEmbedHTML(pollId: string): string {
           setTimeout(connectSSE, 5000);
         };
       }
-      
+
       function updateVoteCounts(data) {
         if (!state.poll) return;
-        
+
         state.poll.totalVotes = data.totalVotes;
-        
-        // Update each answer's votes and percentage
+
         data.answers.forEach(function(update) {
           const answer = state.poll.answers.find(function(a) {
             return a.id === update.answerId;
@@ -398,45 +463,45 @@ function generateEmbedHTML(pollId: string): string {
             answer.percentage = update.percentage;
           }
         });
-        
+
         render();
       }
-      
-      // Render
+
       function render() {
         switch (state.status) {
           case 'loading':
-            root.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div>Loading poll...</div></div>';
+            root.innerHTML = '<div class="poll-content"><div class="loading"><div class="loading-spinner"></div><div>Loading poll...</div></div></div>';
             break;
-            
+
           case 'error':
-            root.innerHTML = '<div class="error"><div class="error-icon">!</div><div>' + escapeHtml(state.error) + '</div></div>';
+            root.innerHTML = '<div class="poll-content"><div class="error"><div class="error-icon">!</div><div>' + escapeHtml(state.error) + '</div></div></div>';
             break;
-            
+
           case 'ready':
           case 'submitting':
             renderVotingView();
             break;
-            
+
           case 'voted':
           case 'closed':
             renderResultsView();
             break;
         }
       }
-      
+
       function renderVotingView() {
         const poll = state.poll;
         const isSubmitting = state.status === 'submitting';
-        
-        let html = '<h2 class="poll-question">' + escapeHtml(poll.question) + '</h2>';
-        
+
+        let html = '<div class="poll-content">';
+        html += '<h2 class="poll-question">' + escapeHtml(poll.question) + '</h2>';
+
         if (state.error) {
           html += '<div class="message error">' + escapeHtml(state.error) + '</div>';
         }
-        
+
         html += '<div class="poll-answers">';
-        
+
         poll.answers.forEach(function(answer) {
           html += '<button class="answer-btn' + (isSubmitting ? ' submitting' : '') + '" ' +
                   'data-answer-id="' + answer.id + '" ' +
@@ -444,40 +509,39 @@ function generateEmbedHTML(pollId: string): string {
                   escapeHtml(answer.text) +
                   '</button>';
         });
-        
-        html += '</div>';
-        
+
+        html += '</div></div>';
+
         root.innerHTML = html;
-        
-        // Add click handlers
+
         root.querySelectorAll('.answer-btn').forEach(function(btn) {
           btn.addEventListener('click', function() {
             handleVote(btn.dataset.answerId);
           });
         });
       }
-      
+
       function renderResultsView() {
         const poll = state.poll;
         const isClosed = state.status === 'closed' || poll.status === 'closed';
-        
-        let html = '<h2 class="poll-question">' + escapeHtml(poll.question) + '</h2>';
-        
+
+        let html = '<div class="poll-content">';
+        html += '<h2 class="poll-question">' + escapeHtml(poll.question) + '</h2>';
+
         if (isClosed) {
-          html += '<div class="message info"><span class="closed-badge">Closed</span> This poll is no longer accepting votes.</div>';
+          html += '<div class="closed-banner"><span class="closed-badge">Closed</span><span class="closed-text">This poll is no longer accepting votes</span></div>';
         }
-        
+
         html += '<div class="poll-results">';
-        
+
         poll.answers.forEach(function(answer) {
           const isUserVote = answer.id === state.userVote;
           const pct = answer.percentage.toFixed(1);
-          
+
           html += '<div class="result-item">' +
                     '<div class="result-header">' +
-                      '<span class="result-text' + (isUserVote ? ' user-vote' : '') + '">' + 
-                        escapeHtml(answer.text) + 
-                        (isUserVote ? ' (your vote)' : '') +
+                      '<span class="result-text' + (isUserVote ? ' user-vote' : '') + '">' +
+                        escapeHtml(answer.text) +
                       '</span>' +
                       '<span class="result-percentage">' + pct + '%</span>' +
                     '</div>' +
@@ -486,47 +550,42 @@ function generateEmbedHTML(pollId: string): string {
                     '</div>' +
                   '</div>';
         });
-        
+
         html += '</div>';
-        
-        // Footer
+
         html += '<div class="poll-footer">' +
                   '<span class="total-votes">' + poll.totalVotes.toLocaleString() + ' vote' + (poll.totalVotes !== 1 ? 's' : '') + '</span>';
-        
+
         if (state.sseConnected && !isClosed) {
           html += '<span class="live-indicator"><span class="live-dot"></span>Live</span>';
         }
-        
-        html += '</div>';
-        
+
+        html += '</div></div>';
+
         root.innerHTML = html;
       }
-      
+
       function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
       }
-      
-      // Event handlers
+
       async function handleVote(answerId) {
         state.status = 'submitting';
         state.error = null;
         render();
-        
+
         try {
           const result = await submitVote(answerId);
-          
-          // Store vote in localStorage
+
           setStoredVote(answerId);
           state.userVote = answerId;
-          
-          // If already voted (409), refresh poll data to get current counts
+
           if (result.alreadyVoted) {
             const poll = await fetchPoll();
             state.poll = poll;
           } else if (result.totalVotes !== undefined) {
-            // Update counts from response if available
             state.poll.totalVotes = result.totalVotes;
             if (result.answers) {
               result.answers.forEach(function(update) {
@@ -540,30 +599,26 @@ function generateEmbedHTML(pollId: string): string {
               });
             }
           }
-          
+
           state.status = 'voted';
           render();
-          
-          // Connect to SSE for live updates
+
           connectSSE();
-          
+
         } catch (err) {
           state.status = 'ready';
           state.error = err.message;
           render();
         }
       }
-      
-      // Initialize
+
       async function init() {
         try {
           const poll = await fetchPoll();
           state.poll = poll;
-          
-          // Check if user already voted
+
           const storedVote = getStoredVote();
           if (storedVote) {
-            // Verify the stored vote is still a valid answer
             const validAnswer = poll.answers.find(function(a) {
               return a.id === storedVote;
             });
@@ -572,7 +627,6 @@ function generateEmbedHTML(pollId: string): string {
               state.status = poll.status === 'closed' ? 'closed' : 'voted';
               connectSSE();
             } else {
-              // Invalid stored vote, allow voting again
               state.status = poll.status === 'closed' ? 'closed' : 'ready';
             }
           } else {
@@ -581,18 +635,17 @@ function generateEmbedHTML(pollId: string): string {
 
           render();
 
-          // Connect SSE for live updates on all published polls
           if (poll.status === 'published') {
             connectSSE();
           }
-          
+
         } catch (err) {
           state.status = 'error';
           state.error = err.message;
           render();
         }
       }
-      
+
       init();
     })();
   </script>
