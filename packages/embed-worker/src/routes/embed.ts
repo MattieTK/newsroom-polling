@@ -307,6 +307,22 @@ function generateEmbedHTML(pollId: string): string {
           // localStorage unavailable
         }
       }
+
+      // Client ID for fingerprinting - persists across sessions in the same browser
+      function getClientId() {
+        const storageKey = 'poll-client-id';
+        try {
+          let clientId = localStorage.getItem(storageKey);
+          if (!clientId) {
+            clientId = crypto.randomUUID();
+            localStorage.setItem(storageKey, clientId);
+          }
+          return clientId;
+        } catch (e) {
+          // localStorage unavailable, generate ephemeral ID
+          return crypto.randomUUID();
+        }
+      }
       
       // API
       async function fetchPoll() {
@@ -322,7 +338,7 @@ function generateEmbedHTML(pollId: string): string {
         const res = await fetch(API_BASE + '/api/poll/' + POLL_ID + '/vote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answerId })
+          body: JSON.stringify({ answerId, clientId: getClientId() })
         });
         
         const data = await res.json();
@@ -338,32 +354,31 @@ function generateEmbedHTML(pollId: string): string {
         return data;
       }
       
-      // SSE
+      // SSE for real-time vote updates
       function connectSSE() {
         if (eventSource) {
           eventSource.close();
         }
-        
+
         eventSource = new EventSource(API_BASE + '/api/poll/' + POLL_ID + '/stream');
-        
+
         eventSource.onopen = function() {
           state.sseConnected = true;
           render();
         };
-        
+
         eventSource.addEventListener('vote-update', function(e) {
           try {
-            const data = JSON.parse(e.data);
+            var data = JSON.parse(e.data);
             updateVoteCounts(data);
           } catch (err) {
-            console.error('SSE parse error:', err);
+            // Ignore parse errors
           }
         });
-        
+
         eventSource.onerror = function() {
           state.sseConnected = false;
           render();
-          // Reconnect after delay
           setTimeout(connectSSE, 5000);
         };
       }
@@ -563,13 +578,13 @@ function generateEmbedHTML(pollId: string): string {
           } else {
             state.status = poll.status === 'closed' ? 'closed' : 'ready';
           }
-          
-          // If closed, still connect SSE for consistency (though no updates expected)
-          if (state.status === 'closed' && !state.userVote) {
-            // Show results without highlighting any answer
-          }
-          
+
           render();
+
+          // Connect SSE for live updates on all published polls
+          if (poll.status === 'published') {
+            connectSSE();
+          }
           
         } catch (err) {
           state.status = 'error';

@@ -31,10 +31,10 @@ export async function handleVote(c: Context): Promise<Response> {
     );
   }
 
-  const { answerId } = validation.data;
-  
-  // Generate fingerprint server-side from IP + User-Agent
-  const voterFingerprint = await generateFingerprint(c.req.raw);
+  const { answerId, clientId } = validation.data;
+
+  // Generate fingerprint server-side from IP + client ID
+  const voterFingerprint = await generateFingerprint(c.req.raw, clientId);
 
   // Get Durable Object stub for this poll
   const doId = c.env.POLL_COUNTER.idFromName(pollId);

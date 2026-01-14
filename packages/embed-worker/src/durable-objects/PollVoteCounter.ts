@@ -17,7 +17,7 @@ interface Env {
 }
 
 interface SSEConnection {
-  writer: WritableStreamDefaultWriter<Uint8Array>;
+  controller: ReadableStreamDefaultController<Uint8Array>;
   id: string;
 }
 
@@ -396,9 +396,8 @@ export class PollVoteCounter extends DurableObject {
       'INSERT INTO votes (id, answer_id, voter_fingerprint, voted_at) VALUES (?, ?, ?, ?)',
       voteId, answerId, voterFingerprint, Date.now()
     );
-
-    // Broadcast to SSE clients
-    await this.broadcastUpdate();
+    // Broadcast to SSE clients (non-blocking to avoid hanging the vote response)
+    this.broadcastUpdate();
 
     // Return updated counts
     return this.getVoteCounts();
@@ -449,69 +448,79 @@ export class PollVoteCounter extends DurableObject {
    * SSE stream for real-time vote updates
    */
   async handleSSE(request: Request): Promise<Response> {
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
-    const connectionId = crypto.randomUUID();
-
-    const connection: SSEConnection = { writer, id: connectionId };
-    this.connections.add(connection);
-
-    // Send initial counts
-    const counts = this.getVoteCountsData();
-    try {
-      await writer.write(encoder.encode(`data: ${JSON.stringify(counts)}\n\n`));
-    } catch (error) {
-      this.connections.delete(connection);
+    // Check poll exists and is published
+    const pollRow = this.sql.exec('SELECT status FROM poll LIMIT 1').toArray()[0];
+    if (!pollRow) {
+      return Response.json({ error: 'Poll not found' }, { status: 404 });
+    }
+    if ((pollRow as any).status === 'draft') {
+      return Response.json({ error: 'Poll not published' }, { status: 403 });
     }
 
-    // Keep-alive interval
-    const keepAliveInterval = setInterval(async () => {
-      try {
-        await writer.write(encoder.encode(': keepalive\n\n'));
-      } catch (error) {
-        clearInterval(keepAliveInterval);
-        this.connections.delete(connection);
-      }
-    }, 30000);
+    const encoder = new TextEncoder();
+    const connectionId = crypto.randomUUID();
+    let keepAliveInterval: ReturnType<typeof setInterval>;
 
-    // Handle client disconnect
-    request.signal.addEventListener('abort', () => {
-      clearInterval(keepAliveInterval);
-      this.connections.delete(connection);
-      writer.close().catch(() => {});
+    const stream = new ReadableStream({
+      start: (controller) => {
+        // Store connection for broadcasts
+        const connection: SSEConnection = {
+          controller,
+          id: connectionId,
+        };
+        this.connections.add(connection);
+
+        // Send initial data
+        const counts = this.getVoteCountsData();
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(counts)}\n\n`));
+
+        // Keep-alive every 30 seconds
+        keepAliveInterval = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(': keepalive\n\n'));
+          } catch {
+            this.cleanupConnection(connectionId, keepAliveInterval);
+          }
+        }, 30000);
+      },
+      cancel: () => {
+        this.cleanupConnection(connectionId, keepAliveInterval);
+      },
     });
 
-    return new Response(readable, {
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
       },
     });
+  }
+
+  private cleanupConnection(connectionId: string, interval?: ReturnType<typeof setInterval>) {
+    if (interval) clearInterval(interval);
+    for (const conn of this.connections) {
+      if (conn.id === connectionId) {
+        this.connections.delete(conn);
+        break;
+      }
+    }
   }
 
   /**
    * Broadcast vote update to all SSE clients
    */
-  async broadcastUpdate(): Promise<void> {
+  broadcastUpdate(): void {
     const encoder = new TextEncoder();
     const counts = this.getVoteCountsData();
-    const message = `event: vote-update\ndata: ${JSON.stringify(counts)}\n\n`;
-
-    const deadConnections = new Set<SSEConnection>();
+    const message = encoder.encode(`event: vote-update\ndata: ${JSON.stringify(counts)}\n\n`);
 
     for (const conn of this.connections) {
       try {
-        await conn.writer.write(encoder.encode(message));
-      } catch (error) {
-        deadConnections.add(conn);
+        conn.controller.enqueue(message);
+      } catch {
+        // Connection closed, remove it
+        this.connections.delete(conn);
       }
-    }
-
-    for (const conn of deadConnections) {
-      this.connections.delete(conn);
     }
   }
 

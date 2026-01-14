@@ -49,9 +49,10 @@ export const updatePollSchema = z.object({
 });
 
 // Vote Request Schema
-// Note: voterFingerprint is generated server-side from IP + User-Agent
+// clientId is a browser-generated UUID stored in localStorage for fingerprinting
 export const voteRequestSchema = z.object({
   answerId: z.string().uuid('Invalid answer ID format'),
+  clientId: z.string().uuid('Invalid client ID format'),
 });
 
 // Query Parameter Schemas

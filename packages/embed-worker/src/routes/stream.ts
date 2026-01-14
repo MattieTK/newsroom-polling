@@ -1,11 +1,9 @@
 import { Context } from 'hono';
-import { errorResponse } from '../lib/utils.js';
-import { ERROR_CODES } from '@newsroom-polling/shared';
 
 /**
  * GET /api/poll/:pollId/stream
  * Server-Sent Events stream for real-time vote updates.
- * Proxies to the poll's Durable Object.
+ * Connects directly to the Durable Object's SSE endpoint.
  */
 export async function handleStream(c: Context): Promise<Response> {
   const pollId = c.req.param('pollId');
@@ -14,27 +12,24 @@ export async function handleStream(c: Context): Promise<Response> {
   const doId = c.env.POLL_COUNTER.idFromName(pollId);
   const stub = c.env.POLL_COUNTER.get(doId);
 
-  // First check if poll exists and is published
-  const checkResponse = await stub.fetch(new Request('http://internal/get'));
-  
-  if (!checkResponse.ok) {
-    if (checkResponse.status === 404) {
-      return errorResponse('Poll not found', 404, ERROR_CODES.POLL_NOT_FOUND);
-    }
-    return errorResponse('Failed to get poll', 500, ERROR_CODES.INTERNAL_ERROR);
+  // Connect to the DO's SSE stream
+  const response = await stub.fetch(new Request('http://internal/stream'));
+
+  // If DO returned an error, pass it through with fresh headers
+  if (!response.ok) {
+    const text = await response.text();
+    return new Response(text, {
+      status: response.status,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+    });
   }
 
-  const poll = await checkResponse.json();
-  
-  if ((poll as any).status === 'draft') {
-    return errorResponse('Poll not published', 403, ERROR_CODES.POLL_NOT_PUBLISHED);
-  }
-
-  // Proxy SSE connection to Durable Object
-  return stub.fetch(
-    new Request('http://internal/stream', {
-      headers: c.req.raw.headers,
-      signal: c.req.raw.signal,
-    })
-  );
+  // Return a new Response with fresh mutable headers (required for Hono CORS middleware)
+  return new Response(response.body, {
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+    }),
+  });
 }
