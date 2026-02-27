@@ -14,7 +14,7 @@
     "build": "npm run build --workspaces --if-present",
     "deploy": "npm run deploy:embed && npm run deploy:cms",
     "deploy:embed": "npm run deploy -w packages/embed-worker",
-    "deploy:cms": "npm run deploy -w packages/cms-worker",
+    "deploy:cms": "npm run build -w packages/cms-ui && npm run deploy -w packages/cms-worker",
     "test": "npm test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "tsc --noEmit && npm run typecheck -w packages/cms-ui"

@@ -3,6 +3,16 @@
   "main": "src/index.ts",
   "compatibility_date": "2024-01-01",
 
+  // Serve the CMS UI as static assets from the cms-ui build output.
+  // API routes are handled by the Worker via run_worker_first.
+  // All other routes fall through to the SPA's index.html.
+  "assets": {
+    "directory": "../cms-ui/dist",
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/health"]
+  },
+
   // Reference to Durable Objects in embed worker
   // All poll data is stored in DO SQLite - no D1 needed
   "durable_objects": {
@@ -10,7 +20,7 @@
       {
         "name": "POLL_COUNTER",
         "class_name": "PollVoteCounter",
-        "script_name": "newsroom-polls-embed"
+        "script_name": "newsroom-polls"
       }
     ]
   },

@@ -79,7 +79,7 @@ newsroom-polling/
 - Node.js 18+
 - npm
 - Cloudflare account with Workers and D1 access
-- Wrangler CLI (`npm install -g wrangler`)
+- Wrangler CLI (included as a dev dependency)
 
 ### 1. Clone and Install
 
@@ -150,19 +150,7 @@ npm run deploy:embed
 npm run deploy:cms
 ```
 
-### 2. Deploy CMS UI (Optional)
-
-The CMS UI can be deployed to Cloudflare Pages:
-
-```bash
-cd packages/cms-ui
-npm run build
-wrangler pages deploy dist --project-name=newsroom-polls-cms
-```
-
-Or serve it from the CMS worker by building and embedding the assets.
-
-### 3. Configure Cloudflare Access (Optional)
+### 2. Configure Cloudflare Access (Optional)
 
 To protect the CMS with authentication:
 

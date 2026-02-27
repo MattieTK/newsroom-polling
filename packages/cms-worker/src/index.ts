@@ -17,6 +17,7 @@ import { requireAuth } from './middleware/auth.js';
 // Note: D1 is no longer used - all data is stored in Durable Object SQLite
 export interface Env {
   POLL_COUNTER: DurableObjectNamespace;
+  ASSETS: Fetcher;         // Static assets binding (CMS UI)
   CF_ACCESS_AUD?: string;  // Cloudflare Access Application Audience Tag
   CF_ACCESS_TEAM?: string; // Cloudflare Access Team Domain (e.g., "mycompany")
   [key: string]: unknown;
@@ -31,66 +32,6 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
-
-// Serve CMS UI
-app.get('/', (c) => {
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Newsroom Polls - CMS</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
-      background: #f5f5f5;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
-    h1 {
-      color: #333;
-      margin-bottom: 30px;
-    }
-    .placeholder {
-      background: white;
-      padding: 40px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Newsroom Polls - CMS</h1>
-    <div class="placeholder">
-      <p>CMS UI will be loaded here.</p>
-      <p>Use the API endpoints to manage polls:</p>
-      <ul style="text-align: left; display: inline-block;">
-        <li>GET /api/polls - List all polls</li>
-        <li>POST /api/polls - Create a poll</li>
-        <li>GET /api/polls/:id - Get poll details</li>
-        <li>PUT /api/polls/:id - Update poll (draft only)</li>
-        <li>POST /api/polls/:id/publish - Publish poll</li>
-        <li>POST /api/polls/:id/close - Close poll</li>
-        <li>GET /api/polls/:id/analytics - View analytics</li>
-      </ul>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return c.html(html);
-});
 
 // Apply auth middleware to all /api routes
 app.use('/api/*', requireAuth);
